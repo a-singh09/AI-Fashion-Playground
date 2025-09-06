@@ -1,19 +1,19 @@
 import * as React from 'react';
 
 const Step: React.FC<{ icon: JSX.Element; title: string; description: string }> = ({ icon, title, description }) => (
-  <div className="flex flex-col items-center text-center p-4">
-    <div className="flex items-center justify-center h-16 w-16 rounded-full bg-pink-100 text-pink-500 mb-4">
+  <div className="flex flex-col items-center text-center p-6 glass-panel rounded-2xl shadow-lg h-full">
+    <div className="flex items-center justify-center h-16 w-16 rounded-full bg-gradient-to-br from-pink-500 to-violet-600 text-white mb-6 shadow-lg">
       {icon}
     </div>
-    <h3 className="text-xl font-semibold text-gray-900 mb-2">{title}</h3>
-    <p className="text-gray-600">{description}</p>
+    <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">{title}</h3>
+    <p className="text-gray-700 dark:text-gray-300">{description}</p>
   </div>
 );
 
 const HowItWorks: React.FC = () => {
   return (
-    <section className="py-20">
-      <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">How It Works</h2>
+    <section className="py-24">
+      <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-16">How It Works</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <Step
           icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}

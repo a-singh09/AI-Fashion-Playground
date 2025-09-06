@@ -3,25 +3,27 @@ import LandingPage from './components/LandingPage';
 import Playground from './components/Playground';
 import Header from './components/Header';
 import Footer from './components/Footer';
-import AiStylist from './components/AiStylist';
+import GetReadyWithMe from './components/AiStylist'; // This file is now GetReadyWithMe
+import { useTheme } from './contexts/ThemeContext';
 
 const App: React.FC = () => {
-  const [page, setPage] = React.useState<'landing' | 'stylist' | 'playground'>('landing');
+  const [page, setPage] = React.useState<'landing' | 'grwm' | 'playground'>('landing');
+  const { theme } = useTheme();
 
   const handleStart = () => {
-    setPage('stylist');
+    setPage('grwm');
   };
 
-  const navigate = (targetPage: 'stylist' | 'playground') => {
+  const navigate = (targetPage: 'grwm' | 'playground') => {
     setPage(targetPage);
   };
 
   return (
-    <div className="min-h-screen flex flex-col font-sans">
+    <div className={`min-h-screen flex flex-col font-sans ${theme}`}>
       <Header page={page} onNavigate={navigate} />
       <main className="flex-grow">
         {page === 'landing' && <LandingPage onStart={handleStart} />}
-        {page === 'stylist' && <AiStylist onNavigate={navigate} />}
+        {page === 'grwm' && <GetReadyWithMe onNavigate={navigate} />}
         {page === 'playground' && <Playground />}
       </main>
       <Footer />

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -7,18 +6,81 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Fashion Playground</title>
     <script src="https://cdn.tailwindcss.com"></script>
-  <script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^19.1.1",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.17.0",
-    "react/": "https://aistudiocdn.com/react@^19.1.1/",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/"
-  }
-}
-</script>
-</head>
-  <body class="bg-gray-50 text-gray-800">
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://aistudiocdn.com/react@^19.1.1",
+          "@google/genai": "https://aistudiocdn.com/@google/genai@^1.17.0",
+          "react/": "https://aistudiocdn.com/react@^19.1.1/",
+          "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/"
+        }
+      }
+    </script>
+    <style>
+      :root {
+        --bg-color: #f0f2f7;
+        --text-color: #1f2937;
+        --text-muted-color: #4b5563;
+        --panel-bg: rgba(255, 255, 255, 0.6);
+        --panel-border: rgba(209, 213, 219, 0.8);
+        --input-bg: rgba(255, 255, 255, 0.5);
+        --input-border: rgba(209, 213, 219, 1);
+        --background-gradient: radial-gradient(at 20% 20%, hsla(278, 80%, 85%, 0.2) 0px, transparent 50%),
+                               radial-gradient(at 80% 20%, hsla(320, 80%, 90%, 0.2) 0px, transparent 50%),
+                               radial-gradient(at 20% 80%, hsla(210, 80%, 90%, 0.3) 0px, transparent 50%),
+                               radial-gradient(at 80% 80%, hsla(350, 80%, 90%, 0.3) 0px, transparent 50%);
+      }
+
+      .dark {
+        --bg-color: #0a0514;
+        --text-color: #e5e7eb;
+        --text-muted-color: #9ca3af;
+        --panel-bg: rgba(0, 0, 0, 0.2);
+        --panel-border: rgba(255, 255, 255, 0.1);
+        --input-bg: rgba(255, 255, 255, 0.1);
+        --input-border: rgba(255, 255, 255, 0.2);
+        --background-gradient: radial-gradient(at 20% 20%, hsla(278, 80%, 15%, 0.5) 0px, transparent 50%),
+                               radial-gradient(at 80% 20%, hsla(320, 80%, 20%, 0.4) 0px, transparent 50%),
+                               radial-gradient(at 20% 80%, hsla(210, 80%, 25%, 0.3) 0px, transparent 50%),
+                               radial-gradient(at 80% 80%, hsla(350, 80%, 25%, 0.4) 0px, transparent 50%);
+      }
+
+      body {
+        background-color: var(--bg-color);
+        background-image: var(--background-gradient);
+        color: var(--text-color);
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+      
+      .glass-panel {
+        background-color: var(--panel-bg);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border: 1px solid var(--panel-border);
+      }
+
+      .form-input {
+        background-color: var(--input-bg);
+        border: 1px solid var(--input-border);
+      }
+
+      /* ADDED FOR D&D ANIMATIONS */
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+      .animate-fade-in {
+        animation: fadeIn 0.3s ease-out forwards;
+      }
+    </style>
+  </head>
+  <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

@@ -1,5 +1,7 @@
 {
   "name": "AI Fashion Playground",
   "description": "A web platform where users can mix and match outfits from their own wardrobe or e-commerce sites on a realistic, AI-generated avatar of themselves using Gemini.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "camera"
+  ]
 }

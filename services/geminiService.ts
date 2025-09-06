@@ -1,4 +1,4 @@
-import { GoogleGenAI, Modality, Part, Type } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse, Modality, Part, Type } from "@google/genai";
 import type { ImageFile } from '../types';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -20,45 +20,30 @@ const fileToPart = (file: ImageFile): Part => {
 };
 
 const getBasePrompt = (mood: string, steering: string) => `
-**Primary Goal: Create a hyper-realistic, ultra-detailed, 8k resolution photograph.**
-
-**Subject & Identity Preservation:**
-- The subject is the woman in the first uploaded image.
-- **It is absolutely critical to retain the exact facial identity of this woman.** Do not alter her facial structure, eye shape and color, nose, lips, or unique features. Preserve her skin tone and hair style and color precisely.
-- Maintain her exact body proportions and pose.
-
-**Clothing & Integration:**
-- Dress the subject in the clothing items provided in the subsequent images.
-- The clothes must be integrated realistically. They should conform to her body with natural folds, wrinkles, and shadows based on the fabric's properties and her pose. Avoid a flat, "pasted-on" or "sticker" appearance.
-
-**Scene & Atmosphere:**
-- Place the subject in the following scene: **${mood}**.
-- The lighting of the scene (e.g., soft shadows, direct sunlight, ambient light) must be consistent and realistically affect both the subject and her clothing. The background should be coherent with the mood.
-
-**Final Image Quality:**
-- The final output must be a professional-grade fashion photograph, as if captured with a DSLR camera.
-- Ensure sharp focus on the subject, especially her face and the clothing details.
-- Avoid any hint of digital painting, smoothing, or an 'airbrushed' look. The result should be indistinguishable from a real photograph.
-
-**User Adjustments (Apply carefully while respecting all rules above):**
-${steering ? `- User request: "${steering}". Integrate this request naturally without compromising realism or identity preservation.` : ''}
+**Goal:** Create a hyper-realistic, 8k photograph.
+**Subject (CRITICAL):** The subject is the woman in the first image. **Her facial identity, skin tone, and body proportions MUST be preserved exactly.** Do not alter her face or body. This is the top priority.
+**Clothing:** Dress her in the clothing items from the subsequent images. Integrate them realistically with natural folds and shadows.
+**Scene:** Place her in this scene: **${mood}**. Lighting must be consistent.
+**Quality:** The final image must be indistinguishable from a real DSLR photograph. Avoid any 'airbrushed' or digital look.
+${steering ? `**User Steering:** "${steering}". Integrate this naturally.` : ''}
 `;
 
-const processApiResponse = (response: any): { images: string[]; error?: string } => {
+// FIX: Correctly process API response by iterating through candidates[0].content.parts.
+const processApiResponse = (response: GenerateContentResponse): { images: string[]; error?: string } => {
     if (!response.candidates || response.candidates.length === 0) {
         return { images: [], error: "AI did not return a valid response. The request may have been blocked." };
     }
 
-    const generatedImages = response.candidates.map((candidate: any) => {
-        const imagePart = candidate.content?.parts?.find((part: any) => part.inlineData);
-        if (imagePart?.inlineData) {
-            return `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
+    const parts = response.candidates[0].content?.parts ?? [];
+    const generatedImages = parts.map((part: Part) => {
+        if (part.inlineData) {
+            return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
         }
         return null;
     }).filter((img: string | null): img is string => img !== null);
 
     if (generatedImages.length === 0) {
-        const textPart = response.candidates[0].content?.parts?.find((part: any) => part.text);
+        const textPart = parts.find((part: any) => part.text);
         const refusalReason = textPart?.text || 'No reason provided.';
         return { images: [], error: `AI did not return an image. It might have refused the request. Reason: ${refusalReason}` };
     }
@@ -132,27 +117,37 @@ export const refineImage = async (
 };
 
 export const selectOutfitFromWardrobe = async (
-    mood: string,
-    wardrobe: ImageFile[]
+    event: string,
+    wardrobe: ImageFile[],
+    styleNotes: string,
+    preferredItemNames: string[]
 ): Promise<{ selection: string[], reasoning: string, error?: string }> => {
     try {
         const model = 'gemini-2.5-flash';
         const clothingList = wardrobe.map(item => `"${item.name}"`).join(', ');
 
-        const prompt = `You are a professional fashion stylist. A user needs help picking an outfit from their wardrobe for a specific occasion.
+        const preferredItemsPrompt = preferredItemNames.length > 0
+            ? `\n**User's Must-Haves:**\nThe user would love to include these items if possible: [${preferredItemNames.join(', ')}]. Prioritize these in your selection if they fit the event and style notes.`
+            : '';
 
-        **User's Wardrobe:**
+
+        const prompt = `You are a fun, encouraging, and stylish best friend helping a user get ready. Your tone is conversational and supportive.
+
+        **Here's what's in our closet:**
         [${clothingList}]
 
-        **Occasion/Mood:**
-        "${mood}"
+        **The event we're getting ready for:**
+        "${event}"
+        
+        ${styleNotes ? `**Here are some style notes they mentioned:**\n"${styleNotes}"\n` : ''}${preferredItemsPrompt}
 
         **Your Task:**
-        1.  Analyze the user's wardrobe and the occasion.
-        2.  Select a complete and appropriate outfit (e.g., a top, a bottom, shoes). Do not select more than 4 items.
-        3.  Provide a brief, encouraging reason for your selection.
+        1.  Look through the closet and pick the perfect, complete outfit (e.g., top, bottom, shoes) for the event.
+        2.  You MUST respect their style notes and STRONGLY consider their must-have items if provided.
+        3.  Don't pick more than 4 items.
+        4.  Explain WHY this is the perfect look. Talk to the user like a friend. For example, "Okay, so for the concert, we HAVE to go with the leather jacket..." If they gave notes or must-haves, mention how you incorporated them!
 
-        Return your answer ONLY as a valid JSON object matching the provided schema. The 'selection' array must contain the exact names of the clothing items from the list provided.`;
+        Return your answer ONLY as a valid JSON object matching the provided schema. The 'selection' array must contain the exact names of the clothing items from the list provided. The 'reasoning' should be your friendly, conversational explanation.`;
         
         const response = await ai.models.generateContent({
             model: model,
@@ -169,7 +164,7 @@ export const selectOutfitFromWardrobe = async (
                         },
                         reasoning: {
                             type: Type.STRING,
-                            description: "A brief, friendly explanation for why this outfit was chosen for the occasion."
+                            description: "Your friendly, encouraging, and conversational explanation for why this outfit is perfect for the event."
                         }
                     },
                     required: ["selection", "reasoning"]

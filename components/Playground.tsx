@@ -6,36 +6,52 @@ import { generateStyledImage, refineImage } from '../services/geminiService';
 import { getAvatar, saveAvatar, getWardrobe, saveWardrobe } from '../services/db';
 import Loader from './Loader';
 
+const GlassPanel: React.FC<{ children: React.ReactNode; className?: string; sticky?: boolean } & React.HTMLAttributes<HTMLDivElement>> = ({ children, className = '', sticky=false, ...rest }) => (
+    <div {...rest} className={`glass-panel rounded-2xl p-6 shadow-2xl ${sticky ? 'sticky top-24' : ''} ${className}`}>
+        {children}
+    </div>
+);
+
 // --- Sub-component: WardrobePanel ---
 interface WardrobePanelProps {
     avatar: ImageFile | null;
     wardrobe: ImageFile[];
     onWardrobeUpload: (images: ImageFile[]) => void;
+    onAvatarUpload: (images: ImageFile[]) => void;
     handleDragStart: (e: React.DragEvent<HTMLDivElement>, cloth: ImageFile) => void;
+    handleDragEnd: () => void;
+    draggedItemId: string | null;
 }
 
-const WardrobePanel: React.FC<WardrobePanelProps> = ({ avatar, wardrobe, onWardrobeUpload, handleDragStart }) => (
-    <div className="bg-white p-6 rounded-lg shadow-lg space-y-4 h-fit sticky top-28">
-        <h3 className="text-xl font-semibold text-gray-800">Your Wardrobe</h3>
-        <ImageUploader onImagesUpload={onWardrobeUpload} buttonText="Add Clothing (Multiple)" multiple={true} />
-         {wardrobe.length > 0 ? (
-            <div className="mt-4 grid grid-cols-3 gap-3 max-h-96 overflow-y-auto pr-2">
+const WardrobePanel: React.FC<WardrobePanelProps> = ({ avatar, wardrobe, onWardrobeUpload, onAvatarUpload, handleDragStart, handleDragEnd, draggedItemId }) => (
+    <GlassPanel sticky>
+        <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Your Studio</h3>
+        <div className="mt-4 space-y-3">
+            <ImageUploader onImagesUpload={onAvatarUpload} buttonText={avatar ? "Change Avatar" : "Upload Avatar"} icon="avatar" />
+            <ImageUploader onImagesUpload={onWardrobeUpload} buttonText="Add Clothing" icon="clothing" multiple={true} />
+        </div>
+         {wardrobe.length > 0 && (
+            <>
+            <hr className="my-4 border-black/10 dark:border-white/10" />
+            <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">Wardrobe</h4>
+            <div className="grid grid-cols-3 gap-3 max-h-96 overflow-y-auto pr-2">
                 {wardrobe.map(cloth => (
                     <div 
                         key={cloth.id} 
                         draggable={!!avatar}
                         onDragStart={(e) => handleDragStart(e, cloth)}
-                        className={`cursor-grab active:cursor-grabbing rounded-md overflow-hidden transition-shadow shadow-sm hover:shadow-md ${!avatar ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        onDragEnd={handleDragEnd}
+                        className={`cursor-grab active:cursor-grabbing rounded-lg overflow-hidden transition-all duration-200 ${!avatar ? 'opacity-50 cursor-not-allowed' : ''} ${draggedItemId === cloth.id ? 'opacity-40 scale-95 border-2 border-dashed border-pink-400' : 'shadow-md hover:shadow-lg hover:shadow-pink-500/20 hover:scale-105'}`}
                         title={avatar ? cloth.name : 'Upload an avatar to start styling'}
                         >
                         <img src={cloth.src} alt={cloth.name} className="w-full h-24 object-cover" />
                     </div>
                 ))}
             </div>
-        ) : (
-             <p className="text-sm text-gray-500 mt-2">Upload some clothes to get started.</p>
+            </>
         )}
-    </div>
+        {!avatar && <p className="text-sm text-gray-600 dark:text-gray-400 mt-4">Upload an avatar to start styling.</p>}
+    </GlassPanel>
 );
 
 // --- Sub-component: CanvasPanel ---
@@ -49,7 +65,6 @@ interface CanvasPanelProps {
     handleDrop: (e: React.DragEvent<HTMLDivElement>) => void;
     setIsDraggingOver: React.Dispatch<React.SetStateAction<boolean>>;
     handleRemoveFromOutfit: (clothId: string) => void;
-    onAvatarUpload: (images: ImageFile[]) => void;
     setCurrentImageIndex: React.Dispatch<React.SetStateAction<number>>;
 }
 
@@ -63,65 +78,70 @@ const CanvasPanel: React.FC<CanvasPanelProps> = ({
     handleDrop,
     setIsDraggingOver,
     handleRemoveFromOutfit,
-    onAvatarUpload,
     setCurrentImageIndex
 }) => (
-     <div className="lg:col-span-2 space-y-4">
-        <div 
+     <div className="lg:col-span-2 space-y-6">
+        <GlassPanel 
+            className={`relative flex items-center justify-center min-h-[400px] sm:min-h-[600px] transition-all duration-300 ${isDraggingOver ? 'ring-4 ring-pink-500 ring-offset-4 ring-offset-gray-100 dark:ring-offset-[#0a0514]' : 'ring-2 ring-transparent'}`}
             onDrop={handleDrop}
             onDragOver={(e) => { e.preventDefault(); setIsDraggingOver(true); }}
-            onDragLeave={() => setIsDraggingOver(false)}
-            className={`relative bg-white p-6 rounded-lg shadow-lg flex items-center justify-center min-h-[600px] transition-all duration-300 ${isDraggingOver ? 'ring-4 ring-pink-400 ring-offset-2' : 'ring-2 ring-transparent'}`}>
+            onDragLeave={() => setIsDraggingOver(false)}>
         
+            {isDraggingOver && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/40 dark:bg-white/10 rounded-2xl pointer-events-none animate-fade-in border-2 border-dashed border-pink-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                    <p className="mt-2 text-lg font-semibold text-white">Drop to add to outfit</p>
+                </div>
+            )}
+
             {!avatar ? (
-                <div className="text-center text-gray-500">
-                   <h3 className="text-xl font-semibold mb-4">Start by Uploading Your Avatar</h3>
-                   <ImageUploader onImagesUpload={onAvatarUpload} buttonText="Upload Avatar" />
+                <div className="text-center text-gray-700 dark:text-gray-300">
+                   <h3 className="text-xl font-semibold mb-4">Your canvas awaits</h3>
+                   <p>Upload your avatar in the studio panel to begin.</p>
                 </div>
             ) : isLoading ? (
                 <div className="text-center">
                     <Loader large />
-                    <p className="mt-4 text-gray-600 animate-pulse">Styling your new look...</p>
+                    <p className="mt-4 text-gray-700 dark:text-gray-200 animate-pulse">Styling your new look...</p>
                 </div>
             ) : (
                 <div className="relative w-full h-full flex items-center justify-center group">
                     <img 
                         src={generatedImages.length > 0 ? generatedImages[currentImageIndex] : avatar.src} 
                         alt="Your Style" 
-                        className="max-w-full max-h-full object-contain rounded-md"
+                        className="max-w-full max-h-[380px] sm:max-h-[580px] object-contain rounded-lg shadow-lg"
                     />
                     {generatedImages.length > 1 && (
                         <>
-                            <button onClick={() => setCurrentImageIndex(p => (p === 0 ? generatedImages.length - 1 : p - 1))} className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => setCurrentImageIndex(p => (p === 0 ? generatedImages.length - 1 : p - 1))} className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70">
                                 &#10094;
                             </button>
-                            <button onClick={() => setCurrentImageIndex(p => (p === generatedImages.length - 1 ? 0 : p + 1))} className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => setCurrentImageIndex(p => (p === generatedImages.length - 1 ? 0 : p + 1))} className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70">
                                 &#10095;
                             </button>
-                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white text-xs px-3 py-1 rounded-full">
                                 {currentImageIndex + 1} / {generatedImages.length}
                             </div>
                         </>
                     )}
                 </div>
             )}
-        </div>
+        </GlassPanel>
         {currentOutfit.length > 0 && (
-            <div className="bg-white p-4 rounded-lg shadow-lg">
-                <h4 className="text-lg font-semibold mb-3">Current Outfit</h4>
+            <GlassPanel>
+                <h4 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white">Current Outfit</h4>
                 <div className="flex items-center gap-3 flex-wrap">
                     {currentOutfit.map(cloth => (
-                         <div key={cloth.id} className="relative group">
-                            <img src={cloth.src} alt={cloth.name} className="w-16 h-16 object-cover rounded-md"/>
-                            <button onClick={() => handleRemoveFromOutfit(cloth.id)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">&times;</button>
+                         <div key={cloth.id} className="relative group animate-fade-in">
+                            <img src={cloth.src} alt={cloth.name} className="w-20 h-20 object-cover rounded-lg"/>
+                            <button onClick={() => handleRemoveFromOutfit(cloth.id)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 transform hover:scale-110">&times;</button>
                          </div>
                     ))}
                 </div>
-            </div>
+            </GlassPanel>
         )}
     </div>
 );
-
 
 // --- Sub-component: StudioControls ---
 interface StudioControlsProps {
@@ -142,51 +162,42 @@ interface StudioControlsProps {
 }
 
 const StudioControls: React.FC<StudioControlsProps> = ({
-    avatar,
-    mood,
-    setMood,
-    styleSteering,
-    setStyleSteering,
-    refineSteering,
-    setRefineSteering,
-    handleGenerate,
-    handleRefine,
-    handleStartOver,
-    isLoading,
-    generatedImages,
-    currentOutfit,
-    error
+    avatar, mood, setMood, styleSteering, setStyleSteering,
+    refineSteering, setRefineSteering, handleGenerate, handleRefine,
+    handleStartOver, isLoading, generatedImages, currentOutfit, error
 }) => (
-     <div className="bg-white p-6 rounded-lg shadow-lg space-y-6 h-fit sticky top-28">
-        <h3 className="text-xl font-semibold text-gray-800">Studio Controls</h3>
-        <div>
-            <label className="font-semibold block mb-2">1. Set the Scene</label>
-            <select value={mood} onChange={e => setMood(e.target.value)} className="w-full p-2 border rounded-md bg-gray-50" disabled={!avatar}>
-                {MOOD_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-            </select>
-        </div>
-        <div>
-            <label className="font-semibold block mb-2">2. Initial Steering <span className="text-sm font-normal text-gray-500">(Optional)</span></label>
-            <input type="text" value={styleSteering} onChange={e => setStyleSteering(e.target.value)} placeholder="e.g., 'Make this casual'" className="w-full p-2 border rounded-md" disabled={!avatar}/>
-        </div>
-         <button onClick={handleGenerate} disabled={!avatar || currentOutfit.length === 0 || isLoading} className="w-full py-2 bg-pink-500 text-white font-bold rounded-md hover:bg-pink-600 transition disabled:bg-pink-300 disabled:cursor-not-allowed flex items-center justify-center">
-            {isLoading && !generatedImages.length ? <><Loader/> Generating...</> : 'Generate Style'}
-        </button>
-         <hr/>
-         <div>
-            <label className="font-semibold block mb-2">3. Refine Result</label>
-            <div className="flex gap-2">
-                 <input type="text" value={refineSteering} onChange={e => setRefineSteering(e.target.value)} placeholder="e.g., 'change the background'" className="w-full p-2 border rounded-md" disabled={generatedImages.length === 0 || isLoading}/>
-                 <button onClick={handleRefine} disabled={generatedImages.length === 0 || !refineSteering || isLoading} className="py-2 px-4 bg-indigo-500 text-white font-bold rounded-md hover:bg-indigo-600 transition disabled:bg-indigo-300 disabled:cursor-not-allowed">
-                    Refine
-                </button>
+     <GlassPanel sticky>
+        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Studio Controls</h3>
+        <div className="space-y-6">
+            <div>
+                <label className="font-semibold block mb-2 text-gray-800 dark:text-gray-200">1. Set the Scene</label>
+                <select value={mood} onChange={e => setMood(e.target.value)} className="w-full p-3 form-input rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-pink-500 focus:outline-none" disabled={!avatar}>
+                    {MOOD_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                </select>
             </div>
+            <div>
+                <label className="font-semibold block mb-2 text-gray-800 dark:text-gray-200">2. Initial Steering <span className="text-sm font-normal text-gray-600 dark:text-gray-400">(Optional)</span></label>
+                <input type="text" value={styleSteering} onChange={e => setStyleSteering(e.target.value)} placeholder="e.g., 'Make this casual'" className="w-full p-3 form-input rounded-lg text-gray-900 dark:text-white placeholder-gray-600 dark:placeholder-gray-400 focus:ring-2 focus:ring-pink-500 focus:outline-none" disabled={!avatar}/>
+            </div>
+             <button onClick={handleGenerate} disabled={!avatar || currentOutfit.length === 0 || isLoading} className="w-full py-3 bg-gradient-to-r from-pink-500 to-violet-600 text-white font-bold rounded-lg hover:from-pink-600 hover:to-violet-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-lg shadow-pink-500/20">
+                {isLoading && !generatedImages.length ? <><Loader/> Generating...</> : 'Generate Style'}
+            </button>
+             <hr className="border-black/10 dark:border-white/10"/>
+             <div>
+                <label className="font-semibold block mb-2 text-gray-800 dark:text-gray-200">3. Refine Result</label>
+                <div className="flex gap-3">
+                     <input type="text" value={refineSteering} onChange={e => setRefineSteering(e.target.value)} placeholder="e.g., 'change the background'" className="w-full p-3 form-input rounded-lg text-gray-900 dark:text-white placeholder-gray-600 dark:placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none" disabled={generatedImages.length === 0 || isLoading}/>
+                     <button onClick={handleRefine} disabled={generatedImages.length === 0 || !refineSteering || isLoading} className="py-3 px-5 bg-indigo-500 text-white font-bold rounded-lg hover:bg-indigo-600 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        Refine
+                    </button>
+                </div>
+            </div>
+             <button onClick={handleStartOver} disabled={!avatar || (currentOutfit.length === 0 && generatedImages.length === 0)} className="w-full py-3 bg-gray-500 dark:bg-gray-600/80 text-white font-bold rounded-lg hover:bg-gray-600 dark:hover:bg-gray-700/80 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                Start Over
+            </button>
+            {error && <p className="text-red-500 dark:text-red-400 text-sm mt-2">{error}</p>}
         </div>
-         <button onClick={handleStartOver} disabled={!avatar || (currentOutfit.length === 0 && generatedImages.length === 0)} className="w-full py-2 bg-gray-600 text-white font-bold rounded-md hover:bg-gray-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed">
-            Start Over
-        </button>
-        {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
-    </div>
+    </GlassPanel>
 );
 
 
@@ -203,6 +214,8 @@ const Playground: React.FC = () => {
     const [styleSteering, setStyleSteering] = React.useState('');
     const [refineSteering, setRefineSteering] = React.useState('');
     const [isDraggingOver, setIsDraggingOver] = React.useState(false);
+    const [isConfirmingStartOver, setIsConfirmingStartOver] = React.useState(false);
+    const [draggedItemId, setDraggedItemId] = React.useState<string | null>(null);
     
     // Load data from IndexedDB on initial render
     React.useEffect(() => {
@@ -228,8 +241,8 @@ const Playground: React.FC = () => {
 
     // Save wardrobe to IndexedDB whenever it changes
     React.useEffect(() => {
-        // We check length > 0 to avoid clearing the DB on initial empty state
-        if (wardrobe.length > 0) {
+        // Only save if there's an actual wardrobe to prevent clearing on initial load
+        if(wardrobe.length > 0) {
             saveWardrobe(wardrobe);
         }
     }, [wardrobe]);
@@ -284,6 +297,12 @@ const Playground: React.FC = () => {
     // Handlers for drag-and-drop
     const handleDragStart = React.useCallback((e: React.DragEvent<HTMLDivElement>, cloth: ImageFile) => {
         e.dataTransfer.setData("text/plain", cloth.id);
+        setDraggedItemId(cloth.id);
+    }, []);
+
+    const handleDragEnd = React.useCallback(() => {
+        setDraggedItemId(null);
+        setIsDraggingOver(false); // Clean up dragging state on end
     }, []);
 
     const handleDrop = React.useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -308,9 +327,13 @@ const Playground: React.FC = () => {
         setStyleSteering('');
         setRefineSteering('');
     }, []);
+    
+    const handleConfirmStartOver = () => {
+        handleStartOver();
+        setIsConfirmingStartOver(false);
+    };
 
     const handleWardrobeUpload = React.useCallback((imgs: ImageFile[]) => {
-        // Prevent duplicates
         const newImages = imgs.filter(img => !wardrobe.some(w => w.id === img.id));
         setWardrobe(p => [...p, ...newImages]);
     }, [wardrobe]);
@@ -324,30 +347,54 @@ const Playground: React.FC = () => {
 
     return (
         <div className="container mx-auto px-4 py-8">
-             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+             {isConfirmingStartOver && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in">
+                    <div className="glass-panel w-full max-w-md mx-4 p-6 border-0 shadow-2xl">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Confirm Start Over</h3>
+                    <p className="text-gray-800 dark:text-gray-300 mb-8">
+                        Are you sure you want to clear your current outfit and generated images?
+                    </p>
+                    <div className="flex justify-end space-x-4">
+                        <button
+                        onClick={() => setIsConfirmingStartOver(false)}
+                        className="px-5 py-2 rounded-lg bg-gray-500/80 text-white font-semibold hover:bg-gray-600/80 transition-colors"
+                        >
+                        Cancel
+                        </button>
+                        <button
+                        onClick={handleConfirmStartOver}
+                        className="px-5 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors"
+                        >
+                        Confirm
+                        </button>
+                    </div>
+                    </div>
+                </div>
+            )}
+             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
                 <div className="lg:col-span-1">
                     <WardrobePanel 
                         avatar={avatar}
                         wardrobe={wardrobe}
                         onWardrobeUpload={handleWardrobeUpload}
-                        handleDragStart={handleDragStart}
-                    />
-                </div>
-                <div className="lg:col-span-2">
-                    <CanvasPanel 
-                        avatar={avatar}
-                        currentOutfit={currentOutfit}
-                        generatedImages={generatedImages}
-                        currentImageIndex={currentImageIndex}
-                        isLoading={isLoading}
-                        isDraggingOver={isDraggingOver}
-                        handleDrop={handleDrop}
-                        setIsDraggingOver={setIsDraggingOver}
-                        handleRemoveFromOutfit={handleRemoveFromOutfit}
                         onAvatarUpload={handleAvatarUpload}
-                        setCurrentImageIndex={setCurrentImageIndex}
+                        handleDragStart={handleDragStart}
+                        handleDragEnd={handleDragEnd}
+                        draggedItemId={draggedItemId}
                     />
                 </div>
+                <CanvasPanel 
+                    avatar={avatar}
+                    currentOutfit={currentOutfit}
+                    generatedImages={generatedImages}
+                    currentImageIndex={currentImageIndex}
+                    isLoading={isLoading}
+                    isDraggingOver={isDraggingOver}
+                    handleDrop={handleDrop}
+                    setIsDraggingOver={setIsDraggingOver}
+                    handleRemoveFromOutfit={handleRemoveFromOutfit}
+                    setCurrentImageIndex={setCurrentImageIndex}
+                />
                 <div className="lg:col-span-1">
                     <StudioControls 
                         avatar={avatar}
@@ -359,7 +406,7 @@ const Playground: React.FC = () => {
                         setRefineSteering={setRefineSteering}
                         handleGenerate={handleGenerate}
                         handleRefine={handleRefine}
-                        handleStartOver={handleStartOver}
+                        handleStartOver={() => setIsConfirmingStartOver(true)}
                         isLoading={isLoading}
                         generatedImages={generatedImages}
                         currentOutfit={currentOutfit}

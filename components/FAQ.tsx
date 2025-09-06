@@ -4,14 +4,14 @@ const FaqItem: React.FC<{ question: string; answer: string }> = ({ question, ans
   const [isOpen, setIsOpen] = React.useState(false);
 
   return (
-    <div className="border-b">
+    <div className="border-b border-black/10 dark:border-white/10">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex justify-between items-center text-left py-4"
+        className="w-full flex justify-between items-center text-left py-5"
       >
-        <span className="font-semibold text-lg">{question}</span>
+        <span className="font-semibold text-lg text-gray-800 dark:text-gray-100">{question}</span>
         <svg
-          className={`w-5 h-5 transform transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-5 h-5 transform transition-transform text-gray-500 dark:text-gray-400 ${isOpen ? 'rotate-180' : ''}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -20,7 +20,7 @@ const FaqItem: React.FC<{ question: string; answer: string }> = ({ question, ans
         </svg>
       </button>
       {isOpen && (
-        <div className="pb-4 text-gray-600">
+        <div className="pb-5 text-gray-700 dark:text-gray-300 pr-5">
           <p>{answer}</p>
         </div>
       )}
@@ -32,7 +32,7 @@ const FAQ: React.FC = () => {
   const faqs = [
     {
       question: 'Is my data private?',
-      answer: 'Absolutely. We prioritize your privacy. Uploaded photos are only used to generate your styles and are not stored long-term or used for any other purpose.',
+      answer: 'Absolutely. We prioritize your privacy. Uploaded photos are stored locally in your browser using IndexedDB. They are never sent to our servers for storage and are only used during the AI generation process.',
     },
     {
       question: 'What kind of photos should I upload?',
@@ -49,9 +49,9 @@ const FAQ: React.FC = () => {
   ];
 
   return (
-    <section className="py-20">
-      <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Frequently Asked Questions</h2>
-      <div className="max-w-3xl mx-auto">
+    <section className="py-24">
+      <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-12">Frequently Asked Questions</h2>
+      <div className="max-w-3xl mx-auto glass-panel rounded-2xl p-4">
         {faqs.map((faq, index) => (
           <FaqItem key={index} question={faq.question} answer={faq.answer} />
         ))}
