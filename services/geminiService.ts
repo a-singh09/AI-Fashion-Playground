@@ -20,7 +20,30 @@ const fileToPart = (file: ImageFile): Part => {
     };
 };
 
-const getBasePrompt = (mood: string, steering: string) => `Create a photorealistic, full-body image of the woman from the first photo, preserving her face, body proportions, skin tone, and hair. Dress her in the clothing items from the following uploaded images. Fit the clothes naturally to her body, respecting natural fabric drape, contours, and realistic shadows. Set the scene as ${mood}. Lighting and background should match the chosen mood. The final image should look like a professional fashion photo, with sharp focus on both the person and the clothing fit. Retain all facial details and natural posture—no warping or “sticker” effect. ${steering ? `Additionally, apply this user request: "${steering}".` : ''} Make only the requested changes while keeping all other elements the same.`;
+const getBasePrompt = (mood: string, steering: string) => `
+**Primary Goal: Create a hyper-realistic, ultra-detailed, 8k resolution photograph.**
+
+**Subject & Identity Preservation:**
+- The subject is the woman in the first uploaded image.
+- **It is absolutely critical to retain the exact facial identity of this woman.** Do not alter her facial structure, eye shape and color, nose, lips, or unique features. Preserve her skin tone and hair style and color precisely.
+- Maintain her exact body proportions and pose.
+
+**Clothing & Integration:**
+- Dress the subject in the clothing items provided in the subsequent images.
+- The clothes must be integrated realistically. They should conform to her body with natural folds, wrinkles, and shadows based on the fabric's properties and her pose. Avoid a flat, "pasted-on" or "sticker" appearance.
+
+**Scene & Atmosphere:**
+- Place the subject in the following scene: **${mood}**.
+- The lighting of the scene (e.g., soft shadows, direct sunlight, ambient light) must be consistent and realistically affect both the subject and her clothing. The background should be coherent with the mood.
+
+**Final Image Quality:**
+- The final output must be a professional-grade fashion photograph, as if captured with a DSLR camera.
+- Ensure sharp focus on the subject, especially her face and the clothing details.
+- Avoid any hint of digital painting, smoothing, or an 'airbrushed' look. The result should be indistinguishable from a real photograph.
+
+**User Adjustments (Apply carefully while respecting all rules above):**
+${steering ? `- User request: "${steering}". Integrate this request naturally without compromising realism or identity preservation.` : ''}
+`;
 
 
 export const generateStyledImage = async (
