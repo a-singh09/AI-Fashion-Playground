@@ -2,25 +2,39 @@ import * as React from 'react';
 import type { ImageFile } from '../types';
 
 interface ImageUploaderProps {
-  onImageUpload: (image: ImageFile) => void;
+  onImagesUpload: (images: ImageFile[]) => void;
   buttonText: string;
+  multiple?: boolean;
 }
 
-const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, buttonText }) => {
+const ImageUploader: React.FC<ImageUploaderProps> = ({ onImagesUpload, buttonText, multiple = false }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        onImageUpload({
-          id: `${file.name}-${Date.now()}`,
-          src: reader.result as string,
-          name: file.name,
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const imagePromises = Array.from(files).map(file => {
+        return new Promise<ImageFile>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                resolve({
+                    id: `${file.name}-${Date.now()}`,
+                    src: reader.result as string,
+                    name: file.name,
+                });
+            };
+            reader.readAsDataURL(file);
         });
-      };
-      reader.readAsDataURL(file);
+    });
+    
+    Promise.all(imagePromises).then(images => {
+        onImagesUpload(images);
+    });
+
+    // Clear the input value to allow re-uploading the same file(s)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
@@ -32,6 +46,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, buttonText
         ref={fileInputRef}
         onChange={handleFileChange}
         className="hidden"
+        multiple={multiple}
       />
       <button
         onClick={() => fileInputRef.current?.click()}
