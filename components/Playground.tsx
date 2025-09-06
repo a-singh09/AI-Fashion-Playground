@@ -22,12 +22,11 @@ interface WardrobePanelProps {
     wardrobe: WardrobeItem[];
     onWardrobeUpload: (images: ImageFile[]) => void;
     onAvatarUpload: (images: ImageFile[]) => void;
-    handleDragStart: (e: React.DragEvent<HTMLDivElement>, cloth: WardrobeItem) => void;
-    handleDragEnd: () => void;
-    draggedItemId: string | null;
+    onItemSelect: (item: WardrobeItem) => void;
+    selectedItemIds: string[];
 }
 
-const WardrobePanel: React.FC<WardrobePanelProps> = ({ avatar, wardrobe, onWardrobeUpload, onAvatarUpload, handleDragStart, handleDragEnd, draggedItemId }) => {
+const WardrobePanel: React.FC<WardrobePanelProps> = ({ avatar, wardrobe, onWardrobeUpload, onAvatarUpload, onItemSelect, selectedItemIds }) => {
     const [categoryFilter, setCategoryFilter] = React.useState<string>('All');
     const [seasonFilter, setSeasonFilter] = React.useState<string>('All');
     const [colorFilter, setColorFilter] = React.useState<string>('');
@@ -73,19 +72,22 @@ const WardrobePanel: React.FC<WardrobePanelProps> = ({ avatar, wardrobe, onWardr
                     {filteredWardrobe.map(cloth => (
                         <div 
                             key={cloth.id} 
-                            draggable={!!avatar}
-                            onDragStart={(e) => handleDragStart(e, cloth)}
-                            onDragEnd={handleDragEnd}
-                            className={`relative group cursor-grab active:cursor-grabbing rounded-lg overflow-hidden transition-all duration-200 ${!avatar ? 'opacity-50 cursor-not-allowed' : ''} ${draggedItemId === cloth.id ? 'opacity-40 scale-95 border-2 border-dashed border-pink-400' : 'shadow-md hover:shadow-lg hover:shadow-pink-500/20 hover:scale-105'}`}
-                            title={avatar ? cloth.name : 'Upload an avatar to start styling'}
+                            onClick={() => avatar && onItemSelect(cloth)}
+                            className={`relative group cursor-pointer rounded-lg overflow-hidden transition-all duration-200 border-2 ${!avatar ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 hover:shadow-lg hover:shadow-pink-500/20'} ${selectedItemIds.includes(cloth.id) ? 'border-pink-500' : 'border-transparent shadow-md'}`}
+                            title={avatar ? `Select ${cloth.name}` : 'Upload an avatar to start styling'}
                             >
                             <img src={cloth.src} alt={cloth.name} className="w-full h-24 object-cover" />
+                             {selectedItemIds.includes(cloth.id) && (
+                                <div className="absolute inset-0 bg-pink-500/50 flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                </div>
+                            )}
                             {cloth.isAnalyzing && (
                                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                                     <Loader />
                                 </div>
                             )}
-                            {cloth.metadata && !cloth.isAnalyzing && (
+                            {cloth.metadata && !cloth.isAnalyzing && !selectedItemIds.includes(cloth.id) && (
                                 <div className="absolute bottom-0 left-0 w-full bg-black/60 px-1 py-0.5">
                                     <p className="text-white text-[10px] truncate font-semibold">{cloth.metadata.category}</p>
                                 </div>
@@ -108,9 +110,6 @@ interface CanvasPanelProps {
     generatedImages: string[];
     currentImageIndex: number;
     isLoading: boolean;
-    isDraggingOver: boolean;
-    handleDrop: (e: React.DragEvent<HTMLDivElement>) => void;
-    setIsDraggingOver: React.Dispatch<React.SetStateAction<boolean>>;
     handleRemoveFromOutfit: (clothId: string) => void;
     setCurrentImageIndex: React.Dispatch<React.SetStateAction<number>>;
 }
@@ -121,26 +120,13 @@ const CanvasPanel: React.FC<CanvasPanelProps> = ({
     generatedImages,
     currentImageIndex,
     isLoading,
-    isDraggingOver,
-    handleDrop,
-    setIsDraggingOver,
     handleRemoveFromOutfit,
     setCurrentImageIndex
 }) => (
      <div className="lg:col-span-2 space-y-6">
         <GlassPanel 
-            className={`relative flex items-center justify-center min-h-[400px] sm:min-h-[600px] transition-all duration-300 ${isDraggingOver ? 'ring-4 ring-pink-500 ring-offset-4 ring-offset-gray-100 dark:ring-offset-[#0a0514]' : 'ring-2 ring-transparent'}`}
-            onDrop={handleDrop}
-            onDragOver={(e) => { e.preventDefault(); setIsDraggingOver(true); }}
-            onDragLeave={() => setIsDraggingOver(false)}>
-        
-            {isDraggingOver && (
-                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/40 dark:bg-white/10 rounded-2xl pointer-events-none animate-fade-in border-2 border-dashed border-pink-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                    <p className="mt-2 text-lg font-semibold text-white">Drop to add to outfit</p>
-                </div>
-            )}
-
+            className={`relative flex items-center justify-center min-h-[400px] sm:min-h-[600px] transition-all duration-300`}
+        >
             {!avatar ? (
                 <div className="text-center text-gray-700 dark:text-gray-300">
                    <h3 className="text-xl font-semibold mb-4">Your canvas awaits</h3>
@@ -260,9 +246,7 @@ const Playground: React.FC = () => {
     const [mood, setMood] = React.useState(MOOD_OPTIONS[0].value);
     const [styleSteering, setStyleSteering] = React.useState('');
     const [refineSteering, setRefineSteering] = React.useState('');
-    const [isDraggingOver, setIsDraggingOver] = React.useState(false);
     const [isConfirmingStartOver, setIsConfirmingStartOver] = React.useState(false);
-    const [draggedItemId, setDraggedItemId] = React.useState<string | null>(null);
     
     // Load data from IndexedDB on initial render
     React.useEffect(() => {
@@ -333,26 +317,17 @@ const Playground: React.FC = () => {
         setIsLoading(false);
     }, [generatedImages, currentImageIndex, refineSteering]);
     
-    // Handlers for drag-and-drop
-    const handleDragStart = React.useCallback((e: React.DragEvent<HTMLDivElement>, cloth: WardrobeItem) => {
-        e.dataTransfer.setData("text/plain", cloth.id);
-        setDraggedItemId(cloth.id);
+    // Handlers for tap-to-select
+    const handleToggleOutfitItem = React.useCallback((item: WardrobeItem) => {
+        setCurrentOutfit(prev => {
+            const isSelected = prev.some(outfitItem => outfitItem.id === item.id);
+            if (isSelected) {
+                return prev.filter(outfitItem => outfitItem.id !== item.id);
+            } else {
+                return [...prev, item];
+            }
+        });
     }, []);
-
-    const handleDragEnd = React.useCallback(() => {
-        setDraggedItemId(null);
-        setIsDraggingOver(false); // Clean up dragging state on end
-    }, []);
-
-    const handleDrop = React.useCallback((e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        const clothId = e.dataTransfer.getData("text/plain");
-        const droppedCloth = wardrobe.find(c => c.id === clothId);
-        if (droppedCloth && !currentOutfit.find(c => c.id === clothId)) {
-            setCurrentOutfit(prev => [...prev, droppedCloth]);
-        }
-        setIsDraggingOver(false);
-    }, [wardrobe, currentOutfit]);
 
     const handleRemoveFromOutfit = React.useCallback((clothId: string) => {
         setCurrentOutfit(prev => prev.filter(c => c.id !== clothId));
@@ -432,9 +407,8 @@ const Playground: React.FC = () => {
                         wardrobe={wardrobe}
                         onWardrobeUpload={handleWardrobeUpload}
                         onAvatarUpload={handleAvatarUpload}
-                        handleDragStart={handleDragStart}
-                        handleDragEnd={handleDragEnd}
-                        draggedItemId={draggedItemId}
+                        onItemSelect={handleToggleOutfitItem}
+                        selectedItemIds={currentOutfit.map(item => item.id)}
                     />
                 </div>
                 <CanvasPanel 
@@ -443,9 +417,6 @@ const Playground: React.FC = () => {
                     generatedImages={generatedImages}
                     currentImageIndex={currentImageIndex}
                     isLoading={isLoading}
-                    isDraggingOver={isDraggingOver}
-                    handleDrop={handleDrop}
-                    setIsDraggingOver={setIsDraggingOver}
                     handleRemoveFromOutfit={handleRemoveFromOutfit}
                     setCurrentImageIndex={setCurrentImageIndex}
                 />
