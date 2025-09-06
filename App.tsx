@@ -17,10 +17,14 @@ const App: React.FC = () => {
   const navigate = (targetPage: 'grwm' | 'playground') => {
     setPage(targetPage);
   };
+  
+  const handleGoHome = () => {
+    setPage('landing');
+  };
 
   return (
     <div className={`min-h-screen flex flex-col font-sans ${theme}`}>
-      <Header page={page} onNavigate={navigate} />
+      <Header page={page} onNavigate={navigate} onGoHome={handleGoHome} />
       <main className="flex-grow">
         {page === 'landing' && <LandingPage onStart={handleStart} />}
         {page === 'grwm' && <GetReadyWithMe onNavigate={navigate} />}
