@@ -1,4 +1,4 @@
-import type { ImageFile } from '../types';
+import type { ImageFile, WardrobeItem } from '../types';
 
 const DB_NAME = 'AIashionPlaygroundDB';
 const DB_VERSION = 1;
@@ -84,7 +84,7 @@ export async function getAvatar(): Promise<ImageFile | null> {
 
 // --- Wardrobe Functions ---
 
-export async function saveWardrobe(wardrobe: ImageFile[]): Promise<void> {
+export async function saveWardrobe(wardrobe: WardrobeItem[]): Promise<void> {
     const db = await initDB();
     const transaction = db.transaction(WARDROBE_STORE, 'readwrite');
     const store = transaction.objectStore(WARDROBE_STORE);
@@ -100,7 +100,7 @@ export async function saveWardrobe(wardrobe: ImageFile[]): Promise<void> {
     });
 }
 
-export async function getWardrobe(): Promise<ImageFile[]> {
+export async function getWardrobe(): Promise<WardrobeItem[]> {
     const db = await initDB();
     const transaction = db.transaction(WARDROBE_STORE, 'readonly');
     const store = transaction.objectStore(WARDROBE_STORE);
@@ -108,7 +108,7 @@ export async function getWardrobe(): Promise<ImageFile[]> {
 
     return new Promise((resolve, reject) => {
         request.onsuccess = () => {
-            resolve(request.result as ImageFile[]);
+            resolve(request.result as WardrobeItem[]);
         };
         request.onerror = (event) => {
             console.error('Failed to get wardrobe:', (event.target as any).error);

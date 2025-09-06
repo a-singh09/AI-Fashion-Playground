@@ -1,8 +1,8 @@
 import * as React from 'react';
-import type { ImageFile } from '../types';
+import type { ImageFile, WardrobeItem, ClothingCategory, ClothingSeason } from '../types';
 import { MOOD_OPTIONS } from '../constants';
 import ImageUploader from './ImageUploader';
-import { generateStyledImage, refineImage } from '../services/geminiService';
+import { generateStyledImage, refineImage, analyzeClothingItem } from '../services/geminiService';
 import { getAvatar, saveAvatar, getWardrobe, saveWardrobe } from '../services/db';
 import Loader from './Loader';
 
@@ -12,52 +12,99 @@ const GlassPanel: React.FC<{ children: React.ReactNode; className?: string; stic
     </div>
 );
 
+const CATEGORY_OPTIONS: ClothingCategory[] = ['Top', 'Bottom', 'Outerwear', 'Shoes', 'Accessory', 'Dress', 'Unknown'];
+const SEASON_OPTIONS: ClothingSeason[] = ['All-Season', 'Winter', 'Spring', 'Summer', 'Autumn'];
+
+
 // --- Sub-component: WardrobePanel ---
 interface WardrobePanelProps {
     avatar: ImageFile | null;
-    wardrobe: ImageFile[];
+    wardrobe: WardrobeItem[];
     onWardrobeUpload: (images: ImageFile[]) => void;
     onAvatarUpload: (images: ImageFile[]) => void;
-    handleDragStart: (e: React.DragEvent<HTMLDivElement>, cloth: ImageFile) => void;
+    handleDragStart: (e: React.DragEvent<HTMLDivElement>, cloth: WardrobeItem) => void;
     handleDragEnd: () => void;
     draggedItemId: string | null;
 }
 
-const WardrobePanel: React.FC<WardrobePanelProps> = ({ avatar, wardrobe, onWardrobeUpload, onAvatarUpload, handleDragStart, handleDragEnd, draggedItemId }) => (
-    <GlassPanel sticky>
-        <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Your Studio</h3>
-        <div className="mt-4 space-y-3">
-            <ImageUploader onImagesUpload={onAvatarUpload} buttonText={avatar ? "Change Avatar" : "Upload Avatar"} icon="avatar" />
-            <ImageUploader onImagesUpload={onWardrobeUpload} buttonText="Add Clothing" icon="clothing" multiple={true} />
-        </div>
-         {wardrobe.length > 0 && (
-            <>
-            <hr className="my-4 border-black/10 dark:border-white/10" />
-            <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">Wardrobe</h4>
-            <div className="grid grid-cols-3 gap-3 max-h-96 overflow-y-auto pr-2">
-                {wardrobe.map(cloth => (
-                    <div 
-                        key={cloth.id} 
-                        draggable={!!avatar}
-                        onDragStart={(e) => handleDragStart(e, cloth)}
-                        onDragEnd={handleDragEnd}
-                        className={`cursor-grab active:cursor-grabbing rounded-lg overflow-hidden transition-all duration-200 ${!avatar ? 'opacity-50 cursor-not-allowed' : ''} ${draggedItemId === cloth.id ? 'opacity-40 scale-95 border-2 border-dashed border-pink-400' : 'shadow-md hover:shadow-lg hover:shadow-pink-500/20 hover:scale-105'}`}
-                        title={avatar ? cloth.name : 'Upload an avatar to start styling'}
-                        >
-                        <img src={cloth.src} alt={cloth.name} className="w-full h-24 object-cover" />
-                    </div>
-                ))}
+const WardrobePanel: React.FC<WardrobePanelProps> = ({ avatar, wardrobe, onWardrobeUpload, onAvatarUpload, handleDragStart, handleDragEnd, draggedItemId }) => {
+    const [categoryFilter, setCategoryFilter] = React.useState<string>('All');
+    const [seasonFilter, setSeasonFilter] = React.useState<string>('All');
+    const [colorFilter, setColorFilter] = React.useState<string>('');
+    
+    const filteredWardrobe = React.useMemo(() => {
+        return wardrobe.filter(item => {
+            if (!item.metadata) return true; // always show items being analyzed
+            const categoryMatch = categoryFilter === 'All' || item.metadata.category === categoryFilter;
+            const seasonMatch = seasonFilter === 'All' || item.metadata.season === seasonFilter;
+            const colorMatch = colorFilter === '' || item.metadata.color.toLowerCase().includes(colorFilter.toLowerCase());
+            return categoryMatch && seasonMatch && colorMatch;
+        });
+    }, [wardrobe, categoryFilter, seasonFilter, colorFilter]);
+
+    return (
+        <GlassPanel sticky>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Your Studio</h3>
+            <div className="mt-4 space-y-3">
+                <ImageUploader onImagesUpload={onAvatarUpload} buttonText={avatar ? "Change Avatar" : "Upload Avatar"} icon="avatar" />
+                <ImageUploader onImagesUpload={onWardrobeUpload} buttonText="Add Clothing" icon="clothing" multiple={true} />
             </div>
-            </>
-        )}
-        {!avatar && <p className="text-sm text-gray-600 dark:text-gray-400 mt-4">Upload an avatar to start styling.</p>}
-    </GlassPanel>
-);
+            {wardrobe.length > 0 && (
+                <>
+                <hr className="my-4 border-black/10 dark:border-white/10" />
+                <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">Wardrobe</h4>
+                
+                {/* Filters */}
+                <div className="space-y-3 mb-4">
+                    <div className="grid grid-cols-2 gap-2">
+                         <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="w-full p-2 form-input rounded-md text-sm text-gray-900 dark:text-white focus:ring-1 focus:ring-pink-500 focus:outline-none">
+                            <option value="All">All Categories</option>
+                            {CATEGORY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                         <select value={seasonFilter} onChange={e => setSeasonFilter(e.target.value)} className="w-full p-2 form-input rounded-md text-sm text-gray-900 dark:text-white focus:ring-1 focus:ring-pink-500 focus:outline-none">
+                            <option value="All">All Seasons</option>
+                             {SEASON_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+                    <input type="text" value={colorFilter} onChange={e => setColorFilter(e.target.value)} placeholder="Filter by color..." className="w-full p-2 form-input rounded-md text-sm text-gray-900 dark:text-white placeholder-gray-600 dark:placeholder-gray-400 focus:ring-1 focus:ring-pink-500 focus:outline-none"/>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 max-h-96 overflow-y-auto pr-2">
+                    {filteredWardrobe.map(cloth => (
+                        <div 
+                            key={cloth.id} 
+                            draggable={!!avatar}
+                            onDragStart={(e) => handleDragStart(e, cloth)}
+                            onDragEnd={handleDragEnd}
+                            className={`relative group cursor-grab active:cursor-grabbing rounded-lg overflow-hidden transition-all duration-200 ${!avatar ? 'opacity-50 cursor-not-allowed' : ''} ${draggedItemId === cloth.id ? 'opacity-40 scale-95 border-2 border-dashed border-pink-400' : 'shadow-md hover:shadow-lg hover:shadow-pink-500/20 hover:scale-105'}`}
+                            title={avatar ? cloth.name : 'Upload an avatar to start styling'}
+                            >
+                            <img src={cloth.src} alt={cloth.name} className="w-full h-24 object-cover" />
+                            {cloth.isAnalyzing && (
+                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                    <Loader />
+                                </div>
+                            )}
+                            {cloth.metadata && !cloth.isAnalyzing && (
+                                <div className="absolute bottom-0 left-0 w-full bg-black/60 px-1 py-0.5">
+                                    <p className="text-white text-[10px] truncate font-semibold">{cloth.metadata.category}</p>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+                </>
+            )}
+            {!avatar && <p className="text-sm text-gray-600 dark:text-gray-400 mt-4">Upload an avatar to start styling.</p>}
+        </GlassPanel>
+    );
+}
+
 
 // --- Sub-component: CanvasPanel ---
 interface CanvasPanelProps {
     avatar: ImageFile | null;
-    currentOutfit: ImageFile[];
+    currentOutfit: WardrobeItem[];
     generatedImages: string[];
     currentImageIndex: number;
     isLoading: boolean;
@@ -157,7 +204,7 @@ interface StudioControlsProps {
     handleStartOver: () => void;
     isLoading: boolean;
     generatedImages: string[];
-    currentOutfit: ImageFile[];
+    currentOutfit: WardrobeItem[];
     error: string | null;
 }
 
@@ -204,8 +251,8 @@ const StudioControls: React.FC<StudioControlsProps> = ({
 // --- Main Component: Playground ---
 const Playground: React.FC = () => {
     const [avatar, setAvatar] = React.useState<ImageFile | null>(null);
-    const [wardrobe, setWardrobe] = React.useState<ImageFile[]>([]);
-    const [currentOutfit, setCurrentOutfit] = React.useState<ImageFile[]>([]);
+    const [wardrobe, setWardrobe] = React.useState<WardrobeItem[]>([]);
+    const [currentOutfit, setCurrentOutfit] = React.useState<WardrobeItem[]>([]);
     const [generatedImages, setGeneratedImages] = React.useState<string[]>([]);
     const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
     const [isLoading, setIsLoading] = React.useState(false);
@@ -238,14 +285,6 @@ const Playground: React.FC = () => {
             saveAvatar(avatar);
         }
     }, [avatar]);
-
-    // Save wardrobe to IndexedDB whenever it changes
-    React.useEffect(() => {
-        // Only save if there's an actual wardrobe to prevent clearing on initial load
-        if(wardrobe.length > 0) {
-            saveWardrobe(wardrobe);
-        }
-    }, [wardrobe]);
 
     const handleGenerate = React.useCallback(async () => {
         if (!avatar || currentOutfit.length === 0) {
@@ -295,7 +334,7 @@ const Playground: React.FC = () => {
     }, [generatedImages, currentImageIndex, refineSteering]);
     
     // Handlers for drag-and-drop
-    const handleDragStart = React.useCallback((e: React.DragEvent<HTMLDivElement>, cloth: ImageFile) => {
+    const handleDragStart = React.useCallback((e: React.DragEvent<HTMLDivElement>, cloth: WardrobeItem) => {
         e.dataTransfer.setData("text/plain", cloth.id);
         setDraggedItemId(cloth.id);
     }, []);
@@ -333,10 +372,25 @@ const Playground: React.FC = () => {
         setIsConfirmingStartOver(false);
     };
 
-    const handleWardrobeUpload = React.useCallback((imgs: ImageFile[]) => {
-        const newImages = imgs.filter(img => !wardrobe.some(w => w.id === img.id));
-        setWardrobe(p => [...p, ...newImages]);
-    }, [wardrobe]);
+    const handleWardrobeUpload = React.useCallback(async (imgs: ImageFile[]) => {
+        const newItems: WardrobeItem[] = imgs.map(img => ({ ...img, isAnalyzing: true }));
+        setWardrobe(prev => [...prev.filter(item => !imgs.some(i => i.id === item.id)), ...newItems]);
+
+        const analysisPromises = newItems.map(async (item) => {
+            const metadata = await analyzeClothingItem(item);
+            const analyzedItem = { ...item, metadata, isAnalyzing: false };
+            
+            // Update state for this one item as soon as it's done
+            setWardrobe(prev => {
+                const updated = prev.map(w => w.id === analyzedItem.id ? analyzedItem : w);
+                saveWardrobe(updated); // Persist change
+                return updated;
+            });
+        });
+
+        await Promise.all(analysisPromises);
+    }, []);
+
 
     const handleAvatarUpload = React.useCallback((imgs: ImageFile[]) => {
         if (imgs[0]) {

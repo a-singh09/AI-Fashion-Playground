@@ -1,5 +1,5 @@
 import * as React from 'react';
-import type { ImageFile } from '../types';
+import type { ImageFile, WardrobeItem } from '../types';
 import { getAvatar, getWardrobe } from '../services/db';
 import { selectOutfitFromWardrobe, generateStyledImage, refineImage } from '../services/geminiService';
 import Loader from './Loader';
@@ -10,8 +10,9 @@ interface GetReadyWithMeProps {
 
 interface SuggestedOutfit {
     image: string;
-    items: ImageFile[];
+    items: WardrobeItem[];
     reasoning: string;
+    affirmation: string;
 }
 
 const GlassPanel: React.FC<{ children: React.ReactNode; className?: string; sticky?: boolean } & React.HTMLAttributes<HTMLDivElement>> = ({ children, className = '', sticky=false, ...rest }) => (
@@ -23,7 +24,7 @@ const GlassPanel: React.FC<{ children: React.ReactNode; className?: string; stic
 
 const GetReadyWithMe: React.FC<GetReadyWithMeProps> = ({ onNavigate }) => {
     const [avatar, setAvatar] = React.useState<ImageFile | null>(null);
-    const [wardrobe, setWardrobe] = React.useState<ImageFile[]>([]);
+    const [wardrobe, setWardrobe] = React.useState<WardrobeItem[]>([]);
     const [event, setEvent] = React.useState('');
     const [styleNotes, setStyleNotes] = React.useState('');
     const [preferredItemIds, setPreferredItemIds] = React.useState<string[]>([]);
@@ -85,7 +86,8 @@ const GetReadyWithMe: React.FC<GetReadyWithMeProps> = ({ onNavigate }) => {
             setSuggestedOutfit({
                 image: imageResult.images[0],
                 items: selectedItems,
-                reasoning: selectionResult.reasoning
+                reasoning: selectionResult.reasoning,
+                affirmation: selectionResult.affirmation
             });
 
         } catch (e) {
@@ -245,6 +247,10 @@ const GetReadyWithMe: React.FC<GetReadyWithMeProps> = ({ onNavigate }) => {
                                         </div>
                                     )}
                                 </div>
+                                <div className="mt-6 text-center bg-gradient-to-r from-pink-500/10 to-violet-600/10 p-4 rounded-lg border border-pink-500/20">
+                                     <p className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-600">"{suggestedOutfit.affirmation}"</p>
+                                </div>
+
                                 <div className="mt-6 bg-black/5 dark:bg-white/5 p-4 rounded-lg border border-black/10 dark:border-white/10">
                                     <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Why this works:</h4>
                                     <p className="text-gray-800 dark:text-gray-300 italic">"{suggestedOutfit.reasoning}"</p>

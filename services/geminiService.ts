@@ -1,5 +1,5 @@
 import { GoogleGenAI, GenerateContentResponse, Modality, Part, Type } from "@google/genai";
-import type { ImageFile } from '../types';
+import type { ImageFile, ClothingMetadata, WardrobeItem } from '../types';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -118,10 +118,10 @@ export const refineImage = async (
 
 export const selectOutfitFromWardrobe = async (
     event: string,
-    wardrobe: ImageFile[],
+    wardrobe: WardrobeItem[],
     styleNotes: string,
     preferredItemNames: string[]
-): Promise<{ selection: string[], reasoning: string, error?: string }> => {
+): Promise<{ selection: string[], reasoning: string, affirmation: string, error?: string }> => {
     try {
         const model = 'gemini-2.5-flash';
         const clothingList = wardrobe.map(item => `"${item.name}"`).join(', ');
@@ -131,7 +131,7 @@ export const selectOutfitFromWardrobe = async (
             : '';
 
 
-        const prompt = `You are a fun, encouraging, and stylish best friend helping a user get ready. Your tone is conversational and supportive.
+        const prompt = `You are a fun, encouraging, and stylish best friend helping a user get ready. Your tone is conversational, supportive, and educational.
 
         **Here's what's in our closet:**
         [${clothingList}]
@@ -145,9 +145,10 @@ export const selectOutfitFromWardrobe = async (
         1.  Look through the closet and pick the perfect, complete outfit (e.g., top, bottom, shoes) for the event.
         2.  You MUST respect their style notes and STRONGLY consider their must-have items if provided.
         3.  Don't pick more than 4 items.
-        4.  Explain WHY this is the perfect look. Talk to the user like a friend. For example, "Okay, so for the concert, we HAVE to go with the leather jacket..." If they gave notes or must-haves, mention how you incorporated them!
+        4.  Explain WHY this is the perfect look. Be specific about fashion concepts (e.g., color theory, silhouette, texture contrast). Talk to the user like a friend. For example, "Okay, for the concert, we HAVE to go with the leather jacket to give you that cool, edgy vibe..." If they gave notes or must-haves, mention how you incorporated them!
+        5. Provide a short, sweet, and positive affirmation about the final look.
 
-        Return your answer ONLY as a valid JSON object matching the provided schema. The 'selection' array must contain the exact names of the clothing items from the list provided. The 'reasoning' should be your friendly, conversational explanation.`;
+        Return your answer ONLY as a valid JSON object matching the provided schema. The 'selection' array must contain the exact names of the clothing items from the list provided. The 'reasoning' should be your friendly, conversational explanation. The 'affirmation' should be a single, confidence-boosting sentence.`;
         
         const response = await ai.models.generateContent({
             model: model,
@@ -164,21 +165,70 @@ export const selectOutfitFromWardrobe = async (
                         },
                         reasoning: {
                             type: Type.STRING,
-                            description: "Your friendly, encouraging, and conversational explanation for why this outfit is perfect for the event."
+                            description: "Your friendly, encouraging, and educational explanation for why this outfit is perfect for the event."
+                        },
+                        affirmation: {
+                            type: Type.STRING,
+                            description: "A short, confidence-boosting affirmation about the look."
                         }
                     },
-                    required: ["selection", "reasoning"]
+                    required: ["selection", "reasoning", "affirmation"]
                 },
             },
         });
 
         const jsonText = response.text.trim();
         const result = JSON.parse(jsonText);
-        return { selection: result.selection, reasoning: result.reasoning };
+        return { selection: result.selection, reasoning: result.reasoning, affirmation: result.affirmation };
 
     } catch (error) {
         console.error("Error calling Gemini API for outfit selection:", error);
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-        return { selection: [], reasoning: '', error: `AI failed to select an outfit. Details: ${errorMessage}` };
+        return { selection: [], reasoning: '', affirmation: '', error: `AI failed to select an outfit. Details: ${errorMessage}` };
+    }
+};
+
+export const analyzeClothingItem = async (item: ImageFile): Promise<ClothingMetadata> => {
+     try {
+        const model = 'gemini-2.5-flash';
+        const imagePart = fileToPart(item);
+        
+        const prompt = `Analyze the clothing item in the image. Identify its category, primary color (be specific, e.g., 'Navy Blue', 'Off-White'), the most suitable season, and its general style. Respond with 'Unknown' if a field cannot be determined.
+
+        -   **category**: Choose one: 'Top', 'Bottom', 'Outerwear', 'Shoes', 'Accessory', 'Dress', 'Unknown'.
+        -   **season**: Choose one: 'Winter', 'Spring', 'Summer', 'Autumn', 'All-Season'.
+        -   **style**: Choose one: 'Casual', 'Formal', 'Sporty', 'Business', 'Evening', 'Unknown'.
+        
+        Return a valid JSON object matching the schema.`;
+
+        const response = await ai.models.generateContent({
+            model: model,
+            contents: { parts: [imagePart, {text: prompt}] },
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        category: { type: Type.STRING, enum: ['Top', 'Bottom', 'Outerwear', 'Shoes', 'Accessory', 'Dress', 'Unknown'] },
+                        color: { type: Type.STRING },
+                        season: { type: Type.STRING, enum: ['Winter', 'Spring', 'Summer', 'Autumn', 'All-Season'] },
+                        style: { type: Type.STRING, enum: ['Casual', 'Formal', 'Sporty', 'Business', 'Evening', 'Unknown'] }
+                    },
+                    required: ["category", "color", "season", "style"]
+                },
+            },
+        });
+
+        const jsonText = response.text.trim();
+        return JSON.parse(jsonText) as ClothingMetadata;
+    } catch (error) {
+        console.error(`Error analyzing clothing item ${item.name}:`, error);
+        // Return a default object on failure so the app doesn't crash
+        return {
+            category: 'Unknown',
+            color: 'Unknown',
+            season: 'All-Season',
+            style: 'Unknown'
+        };
     }
 };
