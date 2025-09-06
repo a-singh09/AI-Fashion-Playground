@@ -1,4 +1,4 @@
-import { GoogleGenAI, Modality, Part } from "@google/genai";
+import { GoogleGenAI, Modality, Part, Type } from "@google/genai";
 import type { ImageFile } from '../types';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -128,5 +128,62 @@ export const refineImage = async (
         console.error("Error refining image with Gemini API:", error);
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
         return { images: [], error: `Failed to refine image. Details: ${errorMessage}` };
+    }
+};
+
+export const selectOutfitFromWardrobe = async (
+    mood: string,
+    wardrobe: ImageFile[]
+): Promise<{ selection: string[], reasoning: string, error?: string }> => {
+    try {
+        const model = 'gemini-2.5-flash';
+        const clothingList = wardrobe.map(item => `"${item.name}"`).join(', ');
+
+        const prompt = `You are a professional fashion stylist. A user needs help picking an outfit from their wardrobe for a specific occasion.
+
+        **User's Wardrobe:**
+        [${clothingList}]
+
+        **Occasion/Mood:**
+        "${mood}"
+
+        **Your Task:**
+        1.  Analyze the user's wardrobe and the occasion.
+        2.  Select a complete and appropriate outfit (e.g., a top, a bottom, shoes). Do not select more than 4 items.
+        3.  Provide a brief, encouraging reason for your selection.
+
+        Return your answer ONLY as a valid JSON object matching the provided schema. The 'selection' array must contain the exact names of the clothing items from the list provided.`;
+        
+        const response = await ai.models.generateContent({
+            model: model,
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        selection: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING },
+                            description: "An array of strings containing the exact names of the chosen clothing items.",
+                        },
+                        reasoning: {
+                            type: Type.STRING,
+                            description: "A brief, friendly explanation for why this outfit was chosen for the occasion."
+                        }
+                    },
+                    required: ["selection", "reasoning"]
+                },
+            },
+        });
+
+        const jsonText = response.text.trim();
+        const result = JSON.parse(jsonText);
+        return { selection: result.selection, reasoning: result.reasoning };
+
+    } catch (error) {
+        console.error("Error calling Gemini API for outfit selection:", error);
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+        return { selection: [], reasoning: '', error: `AI failed to select an outfit. Details: ${errorMessage}` };
     }
 };

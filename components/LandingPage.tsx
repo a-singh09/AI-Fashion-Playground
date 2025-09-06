@@ -15,13 +15,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
           Try on your <span className="text-pink-500">REAL</span> wardrobe, remix your mood.
         </h1>
         <p className="mt-4 max-w-2xl mx-auto text-lg text-gray-600">
-          Become your own fashion icon with AI! Upload a photo of yourself and your clothes to create stunning, realistic outfits for any occasion.
+          Never wonder "what to wear" again. Get instant, personalized outfit suggestions from your own closet, styled by AI.
         </p>
         <button
           onClick={onStart}
           className="mt-8 px-8 py-3 bg-pink-500 text-white font-bold rounded-full hover:bg-pink-600 transition-transform transform hover:scale-105 shadow-lg"
         >
-          Start Styling Now
+          Get Styled by AI
         </button>
       </div>
 

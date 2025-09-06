@@ -3,19 +3,26 @@ import LandingPage from './components/LandingPage';
 import Playground from './components/Playground';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import AiStylist from './components/AiStylist';
 
 const App: React.FC = () => {
-  const [appStarted, setAppStarted] = React.useState(false);
+  const [page, setPage] = React.useState<'landing' | 'stylist' | 'playground'>('landing');
 
   const handleStart = () => {
-    setAppStarted(true);
+    setPage('stylist');
+  };
+
+  const navigate = (targetPage: 'stylist' | 'playground') => {
+    setPage(targetPage);
   };
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
-      <Header />
+      <Header page={page} onNavigate={navigate} />
       <main className="flex-grow">
-        {appStarted ? <Playground /> : <LandingPage onStart={handleStart} />}
+        {page === 'landing' && <LandingPage onStart={handleStart} />}
+        {page === 'stylist' && <AiStylist onNavigate={navigate} />}
+        {page === 'playground' && <Playground />}
       </main>
       <Footer />
     </div>

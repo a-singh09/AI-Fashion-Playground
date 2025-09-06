@@ -1,6 +1,11 @@
 import * as React from 'react';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+    page: 'landing' | 'stylist' | 'playground';
+    onNavigate: (target: 'stylist' | 'playground') => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ page, onNavigate }) => {
     const Logo = () => (
         <div className="flex items-center space-x-2">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-pink-500" viewBox="0 0 20 20" fill="currentColor">
@@ -9,12 +14,27 @@ const Header: React.FC = () => {
             <span className="text-2xl font-bold text-gray-800">AI Fashion Playground</span>
         </div>
     );
+
+    const NavLink: React.FC<{ target: 'stylist' | 'playground'; children: React.ReactNode }> = ({ target, children }) => (
+        <button
+            onClick={() => onNavigate(target)}
+            className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${page === target ? 'bg-pink-100 text-pink-600' : 'text-gray-600 hover:bg-gray-100'}`}
+        >
+            {children}
+        </button>
+    );
     
   return (
     <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
       <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Logo />
+          {page !== 'landing' && (
+              <div className="flex items-center space-x-4">
+                  <NavLink target="stylist">AI Stylist</NavLink>
+                  <NavLink target="playground">Freestyle Playground</NavLink>
+              </div>
+          )}
         </div>
       </nav>
     </header>
