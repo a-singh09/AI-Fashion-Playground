@@ -3,6 +3,7 @@ import type { ImageFile } from '../types';
 import { MOOD_OPTIONS } from '../constants';
 import ImageUploader from './ImageUploader';
 import { generateStyledImage, refineImage } from '../services/geminiService';
+import { getAvatar, saveAvatar, getWardrobe, saveWardrobe } from '../services/db';
 import Loader from './Loader';
 
 // --- Sub-component: WardrobePanel ---
@@ -203,6 +204,36 @@ const Playground: React.FC = () => {
     const [refineSteering, setRefineSteering] = React.useState('');
     const [isDraggingOver, setIsDraggingOver] = React.useState(false);
     
+    // Load data from IndexedDB on initial render
+    React.useEffect(() => {
+        const loadData = async () => {
+            const savedAvatar = await getAvatar();
+            if (savedAvatar) {
+                setAvatar(savedAvatar);
+            }
+            const savedWardrobe = await getWardrobe();
+            if (savedWardrobe) {
+                setWardrobe(savedWardrobe);
+            }
+        };
+        loadData();
+    }, []);
+
+    // Save avatar to IndexedDB whenever it changes
+    React.useEffect(() => {
+        if (avatar) {
+            saveAvatar(avatar);
+        }
+    }, [avatar]);
+
+    // Save wardrobe to IndexedDB whenever it changes
+    React.useEffect(() => {
+        // We check length > 0 to avoid clearing the DB on initial empty state
+        if (wardrobe.length > 0) {
+            saveWardrobe(wardrobe);
+        }
+    }, [wardrobe]);
+
     const handleGenerate = React.useCallback(async () => {
         if (!avatar || currentOutfit.length === 0) {
             setError("Please upload an avatar and add at least one clothing item to the outfit.");
@@ -279,8 +310,10 @@ const Playground: React.FC = () => {
     }, []);
 
     const handleWardrobeUpload = React.useCallback((imgs: ImageFile[]) => {
-        setWardrobe(p => [...p, ...imgs]);
-    }, []);
+        // Prevent duplicates
+        const newImages = imgs.filter(img => !wardrobe.some(w => w.id === img.id));
+        setWardrobe(p => [...p, ...newImages]);
+    }, [wardrobe]);
 
     const handleAvatarUpload = React.useCallback((imgs: ImageFile[]) => {
         if (imgs[0]) {
