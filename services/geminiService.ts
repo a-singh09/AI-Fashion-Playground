@@ -20,13 +20,18 @@ const fileToPart = (file: ImageFile): Part => {
 };
 
 const getBasePrompt = (mood: string, steering: string) => `
-**Goal:** Create a hyper-realistic, 8k photograph.
-**Subject (CRITICAL):** The subject is the woman in the first image. **Her facial identity, skin tone, and body proportions MUST be preserved exactly.** Do not alter her face or body. This is the top priority.
-**Clothing:** Dress her in the clothing items from the subsequent images. Integrate them realistically with natural folds and shadows.
-**Scene:** Place her in this scene: **${mood}**. Lighting must be consistent.
-**Quality:** The final image must be indistinguishable from a real DSLR photograph. Avoid any 'airbrushed' or digital look.
-${steering ? `**User Steering:** "${steering}". Integrate this naturally.` : ''}
+Create a new image by combining the elements from the provided images. Your task is a virtual try-on.
+
+1.  Take the person from the first image.
+2.  Dress them in the clothing items from the subsequent images.
+3.  **Crucially, do not alter the person's face, hair, or body shape. They must remain identical to the first image.**
+
+The final image should be a hyper-realistic, high-resolution photograph of the person wearing the new outfit.
+Place them in this scene: **${mood}**.
+The lighting on the person should match the scene.
+${steering ? `Additional style direction: "${steering}".` : ''}
 `;
+
 
 // FIX: Correctly process API response by iterating through candidates[0].content.parts.
 const processApiResponse = (response: GenerateContentResponse): { images: string[]; error?: string } => {
@@ -94,7 +99,7 @@ export const refineImage = async (
         const model = 'gemini-2.5-flash-image-preview';
 
         const baseImagePart = fileToPart(baseImage);
-        const textPromptPart = { text: `Based on the provided image, apply this change: "${steeringPrompt}". Maintain the original style, realism, and subject identity.` };
+        const textPromptPart = { text: `Apply this refinement to the image: "${steeringPrompt}". It is essential to maintain the identity and body shape of the person in the photo.` };
 
         const contents = {
             parts: [baseImagePart, textPromptPart]
