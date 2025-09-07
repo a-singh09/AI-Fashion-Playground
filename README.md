@@ -108,7 +108,7 @@ To run this project locally, you will need to have a Gemini API key.
 
 1.  **Clone the Repository:**
     ```bash
-    git clone [repository-url]
+    git clone https://github.com/a-singh09/AI-Fashion-Playground/
     cd ai-fashion-playground
     ```
 
@@ -129,3 +129,19 @@ This platform is just the beginning. Potential future enhancements include:
 -   **E-commerce Integration:** Partner with online retailers to allow users to "try on" clothes directly from product pages and purchase them.
 -   **Wardrobe Analytics:** Provide users with insights into their wardrobe, such as most-used colors, style preferences, and items that need replacing.
 -   **Friend & Community Feedback:** A feature to share generated looks with friends or the community to get feedback before wearing an outfit.
+
+## 🙏 Acknowledgments
+
+- **Google Gemini Team** – For the incredible Nano Banana API  
+- **Nano Banana Hackathon Kit** – Foundation and inspiration  
+- **Open Source Community** – Libraries and tools that made this possible  
+
+---
+
+## 💖 Built for Everyone
+
+**AI Fashion Playground** believes fashion should be fun, inclusive, and accessible to everyone. Whether you're exploring your personal style, planning outfits for special occasions, or just having creative fun – this platform is designed to celebrate your unique identity and boost your confidence.
+
+Made with ❤️ for the fashion-forward and the style-curious alike.
+
+
