@@ -2,7 +2,7 @@
 
 **Live Application:** [https://ai-fashion-playground-569679889124.us-west1.run.app](https://ai-fashion-playground-569679889124.us-west1.run.app)
 
-**Video demo:** https://youtu.be/gk8MBoIrxas
+**Video demo:** https://x.com/singh09_a/status/1965699264740565241
 
 
 Your Closet, Reimagined. AI Fashion Playground is a web platform where users can mix and match outfits from their own wardrobe or e-commerce sites on a realistic, AI-generated avatar of themselves using Google's Gemini API.
